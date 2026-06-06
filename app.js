@@ -1,156 +1,142 @@
-// corvid-obs — v0.1.0
-// Field observation logger for corvid behavioral signals
+// corvid-obs v0.1.1 — camera-first transparent UI + voice logging
 
-// ── SERVICE WORKER ──────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/Raven/sw.js', { scope: '/Raven/' }).catch(() => {});
 }
 
-// ── SIGNAL VOCABULARY ───────────────────────────────────────────────────────
-// Each signal: id, plain label, technical id, category, icon key, caveat?
+// ── SIGNAL VOCAB ────────────────────────────────────────────────────────────
 const SIGNALS = {
   vocal: {
-    label: 'Voice',
-    icon: 'call',
+    label: 'Voice', icon: 'V',
     signals: [
-      { id: 'v1',  plain: 'Soft contact call',       tech: 'vocal.contact.call',       icon: 'call_soft',    desc: 'Quiet gurgling or knocking — talking to a partner or flock' },
-      { id: 'v2',  plain: 'Answering a call',         tech: 'vocal.contact.response',   icon: 'call_reply',   desc: 'Responding to another raven\'s contact call' },
-      { id: 'v3',  plain: 'Calling together',         tech: 'vocal.duet',               icon: 'call_duet',    desc: 'Two ravens calling in sync — strong pair bond signal' },
-      { id: 'v4',  plain: 'Aerial alarm',             tech: 'vocal.alarm.aerial',       icon: 'alarm_air',    desc: 'Short rapid calls — something overhead (hawk, eagle)' },
-      { id: 'v5',  plain: 'Ground alarm',             tech: 'vocal.alarm.terrestrial',  icon: 'alarm_ground', desc: 'Longer, lower calls — ground predator nearby' },
-      { id: 'v6',  plain: 'Human alarm',              tech: 'vocal.alarm.human',        icon: 'alarm_human',  desc: 'Specific call for a recognized person — they know you', caveat: 'Individual ID requires sustained observation of same bird' },
-      { id: 'v7',  plain: 'Escalating alarm',         tech: 'vocal.alarm.gradient',     icon: 'alarm_up',     desc: 'Getting louder / faster — threat is approaching' },
-      { id: 'v8',  plain: 'Recruiting the group',     tech: 'vocal.mob.recruit',        icon: 'recruit',      desc: 'Calling others to respond to a threat' },
-      { id: 'v9',  plain: 'Food call',                tech: 'vocal.food.call',          icon: 'food_call',    desc: 'Broadcasting a food find — shared with flock' },
-      { id: 'v10', plain: 'Silent near food',         tech: 'vocal.food.withhold',      icon: 'food_silent',  desc: 'No food call despite food present — may be hiding cache location', caveat: 'Absence signal — requires knowing food is present. Single session cannot confirm strategy.' },
-      { id: 'v11', plain: 'Begging',                  tech: 'vocal.beg',                icon: 'beg',          desc: 'High-pitched repeated calls — juveniles or subordinates wanting food' },
-      { id: 'v12', plain: 'Dominance call',           tech: 'vocal.dominance',          icon: 'dom',          desc: 'Low, harsh — asserting rank or space' },
-      { id: 'v13', plain: 'Appeasement call',         tech: 'vocal.submission',         icon: 'submit',       desc: 'Soft, high — backing down from conflict' },
-      { id: 'v14', plain: 'Play invitation',          tech: 'vocal.play.solicitation',  icon: 'play_call',    desc: 'Distinct call that starts a play sequence' },
-      { id: 'v15', plain: 'Pointing with voice',      tech: 'vocal.referential',        icon: 'refer',        desc: 'Call that directs another\'s attention to a specific thing or place' },
-      { id: 'v16', plain: 'Mimicking another sound',  tech: 'vocal.mimicry',            icon: 'mimic',        desc: 'Reproducing a sound from another species or environment' },
-      { id: 'v17', plain: 'Unfamiliar call',          tech: 'vocal.novel',              icon: 'novel',        desc: 'Call not heard before from this individual — note carefully', caveat: 'Novel calls are high significance but require population baseline to confirm' },
+      { id:'v1',  plain:'Soft contact call',        tech:'vocal.contact.call',      voice:['contact call','soft call','contact'],       caveat: null },
+      { id:'v2',  plain:'Answering a call',          tech:'vocal.contact.response',  voice:['answering','response','reply'],             caveat: null },
+      { id:'v3',  plain:'Calling together',          tech:'vocal.duet',              voice:['duet','calling together','pair call'],      caveat: null },
+      { id:'v4',  plain:'Aerial alarm',              tech:'vocal.alarm.aerial',      voice:['aerial alarm','hawk alarm','raptor'],       caveat: null },
+      { id:'v5',  plain:'Ground alarm',              tech:'vocal.alarm.terrestrial', voice:['ground alarm','terrestrial alarm'],         caveat: null },
+      { id:'v6',  plain:'Human alarm',               tech:'vocal.alarm.human',       voice:['human alarm','person alarm'],              caveat:'Individual ID requires sustained observation' },
+      { id:'v7',  plain:'Escalating alarm',          tech:'vocal.alarm.gradient',    voice:['escalating','getting louder','intensifying'],caveat: null },
+      { id:'v8',  plain:'Recruiting the group',      tech:'vocal.mob.recruit',       voice:['recruiting','mob call','rally'],           caveat: null },
+      { id:'v9',  plain:'Food call',                 tech:'vocal.food.call',         voice:['food call','food find','food'],            caveat: null },
+      { id:'v10', plain:'Silent near food',          tech:'vocal.food.withhold',     voice:['silent near food','no food call','withhold'],caveat:'Absence signal — requires knowing food is present' },
+      { id:'v11', plain:'Begging',                   tech:'vocal.beg',               voice:['begging','beg'],                          caveat: null },
+      { id:'v12', plain:'Dominance call',            tech:'vocal.dominance',         voice:['dominance','asserting','dominant'],        caveat: null },
+      { id:'v13', plain:'Appeasement call',          tech:'vocal.submission',        voice:['appeasement','submissive','backing down'], caveat: null },
+      { id:'v14', plain:'Play invitation',           tech:'vocal.play.solicitation', voice:['play call','play','invitation'],           caveat: null },
+      { id:'v15', plain:'Pointing with voice',       tech:'vocal.referential',       voice:['referential','pointing','directing'],      caveat: null },
+      { id:'v16', plain:'Mimicking a sound',         tech:'vocal.mimicry',           voice:['mimicry','mimicking','copying'],           caveat: null },
+      { id:'v17', plain:'Unfamiliar call',           tech:'vocal.novel',             voice:['novel','unfamiliar','new call'],           caveat:'Requires population baseline to confirm novelty' },
     ]
   },
   feather: {
-    label: 'Feathers',
-    icon: 'feather',
+    label: 'Feathers', icon: 'F',
     signals: [
-      { id: 'f1', plain: 'Throat feathers raised',  tech: 'feather.throat.hackle.raise', icon: 'hackle_up',   desc: 'Ruff standing up at throat — aroused, asserting, or excited' },
-      { id: 'f2', plain: 'Throat feathers flat',    tech: 'feather.throat.hackle.flat',  icon: 'hackle_flat',  desc: 'Smooth throat — calm or submissive' },
-      { id: 'f3', plain: 'Crest up',                tech: 'feather.crest.erect',         icon: 'crest_up',     desc: 'Head feathers raised — high attention, dominance, or excitement' },
-      { id: 'f4', plain: 'Crest flat',              tech: 'feather.crest.flat',          icon: 'crest_flat',   desc: 'Head feathers smooth — calm or backing down' },
-      { id: 'f5', plain: 'Feathers puffed out',     tech: 'feather.fluff',               icon: 'fluff',        desc: 'All-over fluffing — comfort, cold, or unwell. Context matters.' },
-      { id: 'f6', plain: 'Feathers slicked tight',  tech: 'feather.slick',               icon: 'slick',        desc: 'Feathers pressed close to body — alert, ready to move' },
+      { id:'f1', plain:'Throat feathers raised', tech:'feather.throat.hackle.raise', voice:['hackle up','throat up','ruff up'],    caveat: null },
+      { id:'f2', plain:'Throat feathers flat',   tech:'feather.throat.hackle.flat',  voice:['hackle flat','throat flat'],          caveat: null },
+      { id:'f3', plain:'Crest up',               tech:'feather.crest.erect',         voice:['crest up','crest raised'],            caveat: null },
+      { id:'f4', plain:'Crest flat',             tech:'feather.crest.flat',          voice:['crest flat','crest down'],            caveat: null },
+      { id:'f5', plain:'Feathers puffed out',    tech:'feather.fluff',               voice:['puffed','fluffed','puffed out'],      caveat:'Could indicate cold or illness — note context' },
+      { id:'f6', plain:'Feathers slicked tight', tech:'feather.slick',               voice:['slicked','tight','alert posture'],    caveat: null },
     ]
   },
   gaze: {
-    label: 'Eyes & Head',
-    icon: 'eye',
+    label: 'Head', icon: 'H',
     signals: [
-      { id: 'g1', plain: 'Looking directly at you',    tech: 'gaze.direct',          icon: 'gaze_direct',   desc: 'Sustained direct gaze — evaluating, curious, or asserting' },
-      { id: 'g2', plain: 'Looking sideways',           tech: 'gaze.lateral',         icon: 'gaze_side',     desc: 'One eye toward you — primary inspection mode for ravens' },
-      { id: 'g3', plain: 'Looking away',               tech: 'gaze.averted',         icon: 'gaze_away',     desc: 'Eyes turned off — submission or disengaging' },
-      { id: 'g4', plain: 'Watching you closely',       tech: 'gaze.human.sustained', icon: 'gaze_human',    desc: 'Prolonged attention on a specific person — recognition likely active', caveat: 'Individual recognition confirmed only with longitudinal data' },
-      { id: 'g5', plain: 'Scanning before hiding food',tech: 'gaze.cache.check',     icon: 'cache_scan',    desc: 'Rapid surveillance sweep before or after hiding food', caveat: 'Strategic modulation — observe who is present' },
-      { id: 'g6', plain: 'Head tilted',                tech: 'head.tilt',            icon: 'head_tilt',     desc: 'Orienting ear or eye — high attention and engagement' },
-      { id: 'g7', plain: 'Head bobbing',               tech: 'head.bob',             icon: 'head_bob',      desc: 'Repeated vertical movement — arousal, anticipation' },
-      { id: 'g8', plain: 'Beak pointing at something', tech: 'beak.point',           icon: 'beak_point',    desc: 'Directing another\'s attention with beak — referential gesture' },
-      { id: 'g9', plain: 'Beak clattering',            tech: 'beak.clatter',         icon: 'beak_clatter',  desc: 'Rapid beak clacking — threat display or excitement' },
-      { id:'g10', plain: 'Wiping beak on perch',       tech: 'beak.wipe',            icon: 'beak_wipe',     desc: 'Displacement behavior — mild frustration or arousal' },
+      { id:'g1',  plain:'Direct gaze at you',        tech:'gaze.direct',          voice:['direct gaze','looking at me','eye contact'], caveat: null },
+      { id:'g2',  plain:'Sideways look',             tech:'gaze.lateral',         voice:['lateral','sideways','one eye'],              caveat: null },
+      { id:'g3',  plain:'Looking away',              tech:'gaze.averted',         voice:['looking away','averted','disengaged'],       caveat: null },
+      { id:'g4',  plain:'Watching you closely',      tech:'gaze.human.sustained', voice:['watching me','sustained gaze','tracking me'],caveat:'Individual recognition — requires longitudinal data' },
+      { id:'g5',  plain:'Cache surveillance scan',   tech:'gaze.cache.check',     voice:['cache scan','checking','surveillance'],      caveat:'Note who else is present' },
+      { id:'g6',  plain:'Head tilted',               tech:'head.tilt',            voice:['head tilt','tilting'],                      caveat: null },
+      { id:'g7',  plain:'Head bobbing',              tech:'head.bob',             voice:['head bob','bobbing'],                       caveat: null },
+      { id:'g8',  plain:'Beak pointing at something',tech:'beak.point',           voice:['beak point','pointing','gesturing'],         caveat: null },
+      { id:'g9',  plain:'Beak clattering',           tech:'beak.clatter',         voice:['beak clatter','clattering'],                caveat: null },
+      { id:'g10', plain:'Wiping beak',               tech:'beak.wipe',            voice:['beak wipe','wiping'],                       caveat: null },
     ]
   },
   posture: {
-    label: 'Body',
-    icon: 'body',
+    label: 'Body', icon: 'B',
     signals: [
-      { id: 'p1', plain: 'Standing tall, upright',  tech: 'posture.upright.tall',  icon: 'tall',          desc: 'Full height, confident — dominance or high engagement' },
-      { id: 'p2', plain: 'Crouched low',             tech: 'posture.crouch',        icon: 'crouch',        desc: 'Low body — submission, fear, or play invitation. Context matters.' },
-      { id: 'p3', plain: 'Leaning toward something', tech: 'posture.lean.toward',   icon: 'lean_in',       desc: 'Body angled in — interested, engaged' },
-      { id: 'p4', plain: 'Leaning away',             tech: 'posture.lean.away',     icon: 'lean_out',      desc: 'Body angled back — assessing a threat, not fleeing yet' },
-      { id: 'p5', plain: 'Parallel to partner',      tech: 'posture.parallel',      icon: 'parallel',      desc: 'Matching another\'s orientation — affiliative, coordinated' },
+      { id:'p1', plain:'Standing tall',          tech:'posture.upright.tall', voice:['standing tall','upright','tall'],        caveat: null },
+      { id:'p2', plain:'Crouched low',           tech:'posture.crouch',       voice:['crouched','low','crouching'],            caveat:'Context determines meaning — submission or play' },
+      { id:'p3', plain:'Leaning toward',         tech:'posture.lean.toward',  voice:['leaning in','leaning toward','engaged'], caveat: null },
+      { id:'p4', plain:'Leaning away',           tech:'posture.lean.away',    voice:['leaning away','leaning back'],           caveat: null },
+      { id:'p5', plain:'Parallel to partner',    tech:'posture.parallel',     voice:['parallel','side by side','matching'],    caveat: null },
     ]
   },
   movement: {
-    label: 'Movement',
-    icon: 'move',
+    label: 'Move', icon: 'M',
     signals: [
-      { id: 'm1', plain: 'Wings drooping',           tech: 'wing.droop',      icon: 'wing_droop',   desc: 'Wings hanging low — submission, juvenile bonding, or unwell' },
-      { id: 'm2', plain: 'Wings spread wide',        tech: 'wing.spread',     icon: 'wing_spread',  desc: 'Full spread — dominance display or sun-bathing' },
-      { id: 'm3', plain: 'Wing flutter toward other',tech: 'wing.flutter',    icon: 'wing_flutter', desc: 'Rapid flutter aimed at another — appeasement or pair bond' },
-      { id: 'm4', plain: 'Hopping closer',           tech: 'hop.approach',    icon: 'hop_in',       desc: 'Moving toward — curiosity, maintaining safe distance' },
-      { id: 'm5', plain: 'Hopping away',             tech: 'hop.retreat',     icon: 'hop_out',      desc: 'Moving back to assess from distance' },
-      { id: 'm6', plain: 'Strutting',                tech: 'walk.strut',      icon: 'strut',        desc: 'Deliberate, high-step walk — confidence, dominance' },
-      { id: 'm7', plain: 'Short repositioning flight',tech: 'flight.short',   icon: 'flight_short', desc: 'Brief hop to new spot — adjusting position, not fleeing' },
-      { id: 'm8', plain: 'Full flight away',         tech: 'flight.full',     icon: 'flight_full',  desc: 'Leaving — threshold exceeded. Observation window closed.' },
+      { id:'m1', plain:'Wings drooping',          tech:'wing.droop',    voice:['wings drooping','drooped'],          caveat: null },
+      { id:'m2', plain:'Wings spread wide',       tech:'wing.spread',   voice:['wings spread','spreading'],          caveat: null },
+      { id:'m3', plain:'Wing flutter at other',   tech:'wing.flutter',  voice:['wing flutter','fluttering'],         caveat: null },
+      { id:'m4', plain:'Hopping closer',          tech:'hop.approach',  voice:['hopping closer','approaching','hop in'], caveat: null },
+      { id:'m5', plain:'Hopping away',            tech:'hop.retreat',   voice:['hopping away','retreating','hop out'],  caveat: null },
+      { id:'m6', plain:'Strutting',               tech:'walk.strut',    voice:['strutting','strut'],                 caveat: null },
+      { id:'m7', plain:'Short repositioning',     tech:'flight.short',  voice:['short flight','repositioning'],      caveat: null },
+      { id:'m8', plain:'Flying away',             tech:'flight.full',   voice:['flying away','fled','gone'],         caveat: null },
     ]
   },
   social: {
-    label: 'Social',
-    icon: 'social',
+    label: 'Social', icon: 'S',
     signals: [
-      { id: 's1', plain: 'Preening each other',      tech: 'allopreening',         icon: 'allopreen',    desc: 'Mutual grooming — strong trust and pair bond indicator' },
-      { id: 's2', plain: 'Touching beaks',           tech: 'bill.touch',           icon: 'bill_touch',   desc: 'Bill-to-bill contact — pair bond reinforcement' },
-      { id: 's3', plain: 'Playing with an object',   tech: 'play.object',          icon: 'play_obj',     desc: 'Manipulating something for apparent enjoyment' },
-      { id: 's4', plain: 'Aerial play',              tech: 'play.aerial',          icon: 'play_air',     desc: 'Acrobatic flight — positive arousal, often juveniles or bonded pairs' },
-      { id: 's5', plain: 'Hiding food',              tech: 'cache.behavior',       icon: 'cache',        desc: 'Burying or concealing food — note who is watching', caveat: 'Record who is present — audience affects behavior (§CORVID1)' },
-      { id: 's6', plain: 'Moving a hidden cache',    tech: 'cache.recache',        icon: 'recache',      desc: 'Relocating previously hidden food — was being watched', caveat: 'High significance. Requires knowing cache was already placed. Cannot confirm from single session.' },
-      { id: 's7', plain: 'Group assembling',         tech: 'coalition.assembly',   icon: 'group',        desc: 'Non-paired individuals gathering — record count and context' },
+      { id:'s1', plain:'Mutual preening',    tech:'allopreening',        voice:['allopreening','mutual preening','grooming each other'], caveat: null },
+      { id:'s2', plain:'Beak touching',      tech:'bill.touch',          voice:['bill touch','beak touch','touching beaks'],            caveat: null },
+      { id:'s3', plain:'Object play',        tech:'play.object',         voice:['object play','playing with'],                          caveat: null },
+      { id:'s4', plain:'Aerial play',        tech:'play.aerial',         voice:['aerial play','acrobatics','flying play'],              caveat: null },
+      { id:'s5', plain:'Hiding food',        tech:'cache.behavior',      voice:['caching','hiding food','cache'],                       caveat:'Note who is watching — audience affects behavior' },
+      { id:'s6', plain:'Moving hidden food', tech:'cache.recache',       voice:['recaching','moving cache','relocating'],               caveat:'High significance. Cannot confirm strategy from single session.' },
+      { id:'s7', plain:'Group assembling',   tech:'coalition.assembly',  voice:['group assembling','gathering','group'],                caveat: null },
     ]
   },
-  regulation: {
-    label: 'Calm / Rest',
-    icon: 'calm',
+  calm: {
+    label: 'Calm', icon: 'C',
     signals: [
-      { id: 'r1', plain: 'Preening self',    tech: 'regulation.preen',        icon: 'preen',      desc: 'Self-grooming — parasympathetic, coming down, comfortable' },
-      { id: 'r2', plain: 'Sunbathing',       tech: 'regulation.sunbathe',     icon: 'sun',        desc: 'Wings spread to sun — low arousal, feels safe' },
-      { id: 'r3', plain: 'Bathing',          tech: 'regulation.bathe',        icon: 'bathe',      desc: 'Water or dust bathing — low arousal, comfortable' },
-      { id: 'r4', plain: 'Roosting early',   tech: 'regulation.roost.early',  icon: 'roost',      desc: 'Going to roost before usual time — elevated arousal or stress' },
+      { id:'r1', plain:'Preening self',   tech:'regulation.preen',       voice:['preening','self preening','grooming'],  caveat: null },
+      { id:'r2', plain:'Sunbathing',      tech:'regulation.sunbathe',    voice:['sunbathing','sun'],                    caveat: null },
+      { id:'r3', plain:'Bathing',         tech:'regulation.bathe',       voice:['bathing','bath'],                      caveat: null },
+      { id:'r4', plain:'Roosting early',  tech:'regulation.roost.early', voice:['roosting early','early roost'],        caveat:'Elevated stress indicator' },
     ]
   }
 };
 
-// Category SVG icons (inline, field-readable silhouettes)
-const CATEGORY_ICONS = {
-  call:    `<svg viewBox="0 0 40 40"><ellipse cx="20" cy="22" rx="10" ry="12" fill="currentColor"/><path d="M14 16 Q10 8 20 6 Q30 8 26 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M11 14 Q5 4 20 2 Q35 4 29 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>`,
-  feather: `<svg viewBox="0 0 40 40"><path d="M20 34 C20 34 8 22 10 12 C12 4 20 4 20 4 C20 4 28 4 30 12 C32 22 20 34 20 34Z" fill="currentColor"/><line x1="20" y1="34" x2="20" y2="8" stroke="white" stroke-width="1.5" opacity=".4"/></svg>`,
-  eye:     `<svg viewBox="0 0 40 40"><path d="M4 20 Q20 6 36 20 Q20 34 4 20Z" fill="currentColor"/><circle cx="20" cy="20" r="5" fill="white"/><circle cx="21" cy="19" r="2.5" fill="#111"/></svg>`,
-  body:    `<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="12" ry="15" fill="currentColor"/><circle cx="20" cy="9" r="5" fill="currentColor"/></svg>`,
-  move:    `<svg viewBox="0 0 40 40"><path d="M6 32 L20 8 L34 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 24 L30 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`,
-  social:  `<svg viewBox="0 0 40 40"><circle cx="13" cy="14" r="7" fill="currentColor"/><circle cx="27" cy="14" r="7" fill="currentColor"/><ellipse cx="13" cy="30" rx="9" ry="7" fill="currentColor"/><ellipse cx="27" cy="30" rx="9" ry="7" fill="currentColor"/></svg>`,
-  calm:    `<svg viewBox="0 0 40 40"><path d="M20 6 L24 14 L34 15.5 L27 22 L28.7 32 L20 28 L11.3 32 L13 22 L6 15.5 L16 14Z" fill="currentColor"/></svg>`,
-};
+// Build flat voice → signal lookup
+const VOICE_MAP = [];
+for (const [catKey, cat] of Object.entries(SIGNALS)) {
+  for (const sig of cat.signals) {
+    for (const phrase of (sig.voice || [])) {
+      VOICE_MAP.push({ phrase: phrase.toLowerCase(), sig, catKey });
+    }
+  }
+}
 
 // ── SESSION LEDGER ──────────────────────────────────────────────────────────
-class SessionLedger {
+class Ledger {
   constructor() {
-    this.id = this._uid();
+    this.id = 'corvid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,5);
     this.startedAt = Date.now();
     this.species = 'raven';
     this.context = {};
     this.events = [];
   }
 
-  _uid() {
-    return 'corvid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
-  }
+  setCtx(obj) { Object.assign(this.context, obj); }
 
-  setContext(ctx) {
-    this.context = { ...this.context, ...ctx };
-  }
-
-  log(signalId, signal, note = '') {
-    const entry = {
-      ts: Date.now(),
-      id: this._uid(),
-      signalId,
-      tech: signal.tech,
-      plain: signal.plain,
-      note,
-      hasCaveat: !!signal.caveat,
+  log(sig, source = 'tap') {
+    const e = {
+      ts: Date.now(), elapsed: Date.now() - this.startedAt,
+      id: Math.random().toString(36).slice(2,8),
+      tech: sig.tech, plain: sig.plain,
+      hasCaveat: !!sig.caveat, source
     };
-    this.events.push(entry);
-    return entry;
+    this.events.push(e);
+    return e;
+  }
+
+  summary() {
+    const c = {};
+    this.events.forEach(e => c[e.tech] = (c[e.tech]||0)+1);
+    return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([t,n])=>({t,n}));
   }
 
   export() {
@@ -164,549 +150,411 @@ class SessionLedger {
       events: this.events.map(e => ({
         ...e,
         ts_iso: new Date(e.ts).toISOString(),
-        elapsed_s: ((e.ts - this.startedAt) / 1000).toFixed(1),
-      })),
+        elapsed_s: (e.elapsed/1000).toFixed(1)
+      }))
     };
-  }
-
-  summary() {
-    const counts = {};
-    this.events.forEach(e => { counts[e.tech] = (counts[e.tech] || 0) + 1; });
-    return Object.entries(counts)
-      .sort((a,b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tech, n]) => ({ tech, n }));
   }
 }
 
 // ── AUDIO ENGINE ────────────────────────────────────────────────────────────
 class AudioEngine {
-  constructor(canvasEl) {
-    this.canvas = canvasEl;
-    this.ctx = null;
-    this.analyser = null;
-    this.stream = null;
-    this.mediaRecorder = null;
-    this.chunks = [];
-    this.recording = false;
-    this.animFrame = null;
-  }
+  constructor() { this.stream = null; this.analyser = null; this.raf = null; }
 
   async start() {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
-      const source = this.ctx.createMediaStreamSource(this.stream);
-      this.analyser = this.ctx.createAnalyser();
-      this.analyser.fftSize = 256;
-      source.connect(this.analyser);
-      this._draw();
-
-      this.mediaRecorder = new MediaRecorder(this.stream);
-      this.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
-      this.mediaRecorder.start();
-      this.recording = true;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ac = new AC();
+      const src = this.ac.createMediaStreamSource(this.stream);
+      this.analyser = this.ac.createAnalyser();
+      this.analyser.fftSize = 128;
+      src.connect(this.analyser);
       return true;
-    } catch(e) {
-      return false;
-    }
+    } catch(e) { return false; }
+  }
+
+  drawLoop(canvas) {
+    const ctx = canvas.getContext('2d');
+    const buf = new Uint8Array(this.analyser.frequencyBinCount);
+    const draw = () => {
+      this.raf = requestAnimationFrame(draw);
+      this.analyser.getByteFrequencyData(buf);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width / buf.length;
+      buf.forEach((v, i) => {
+        const h = (v/255) * canvas.height;
+        const a = 0.25 + (v/255)*0.6;
+        ctx.fillStyle = `rgba(200,168,75,${a})`;
+        ctx.fillRect(i*w, canvas.height-h, Math.max(1,w-1), h);
+      });
+    };
+    draw();
   }
 
   stop() {
-    if (this.animFrame) cancelAnimationFrame(this.animFrame);
-    if (this.mediaRecorder && this.recording) this.mediaRecorder.stop();
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-    if (this.ctx) this.ctx.close();
-    this.recording = false;
-  }
-
-  getBlob() {
-    if (!this.chunks.length) return null;
-    return new Blob(this.chunks, { type: 'audio/webm' });
-  }
-
-  _draw() {
-    const canvas = this.canvas;
-    const ctx = canvas.getContext('2d');
-    const buf = new Uint8Array(this.analyser.frequencyBinCount);
-
-    const loop = () => {
-      this.animFrame = requestAnimationFrame(loop);
-      this.analyser.getByteFrequencyData(buf);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const w = canvas.width / buf.length;
-      buf.forEach((v, i) => {
-        const h = (v / 255) * canvas.height;
-        const alpha = 0.3 + (v / 255) * 0.7;
-        ctx.fillStyle = `rgba(180,160,100,${alpha})`;
-        ctx.fillRect(i * w, canvas.height - h, w - 1, h);
-      });
-    };
-    loop();
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.stream) this.stream.getTracks().forEach(t=>t.stop());
+    if (this.ac) this.ac.close();
   }
 }
 
 // ── CAMERA ENGINE ───────────────────────────────────────────────────────────
 class CameraEngine {
-  constructor(videoEl) {
-    this.video = videoEl;
-    this.stream = null;
-  }
+  constructor(videoEl) { this.video = videoEl; this.stream = null; }
 
   async start() {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { facingMode: 'environment', width:{ideal:1920}, height:{ideal:1080} },
+        audio: false
       });
       this.video.srcObject = this.stream;
       await this.video.play();
       return true;
-    } catch(e) {
-      return false;
+    } catch(e) { return false; }
+  }
+
+  stop() { if (this.stream) this.stream.getTracks().forEach(t=>t.stop()); }
+}
+
+// ── VOICE RECOGNITION ───────────────────────────────────────────────────────
+class VoiceEngine {
+  constructor(onMatch) {
+    this.onMatch = onMatch;
+    this.active = false;
+    this.rec = null;
+    this._init();
+  }
+
+  _init() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    this.rec = new SR();
+    this.rec.continuous = true;
+    this.rec.interimResults = true;
+    this.rec.lang = 'en-US';
+
+    this.rec.onresult = (e) => {
+      const last = e.results[e.results.length - 1];
+      const text = last[0].transcript.toLowerCase().trim();
+      if (last.isFinal) this._match(text);
+      else this._showInterim(text);
+    };
+
+    this.rec.onend = () => {
+      if (this.active) {
+        try { this.rec.start(); } catch(e) {}
+      }
+    };
+  }
+
+  _match(text) {
+    let best = null, bestLen = 0;
+    for (const entry of VOICE_MAP) {
+      if (text.includes(entry.phrase) && entry.phrase.length > bestLen) {
+        best = entry; bestLen = entry.phrase.length;
+      }
     }
+    if (best) this.onMatch(best.sig, text);
+    hideVoiceInterim();
+  }
+
+  _showInterim(text) {
+    const el = document.getElementById('voice-heard');
+    if (el) el.textContent = text;
+    document.getElementById('voice-status').classList.add('visible');
+  }
+
+  toggle() {
+    if (!this.rec) return false;
+    this.active = !this.active;
+    if (this.active) {
+      try { this.rec.start(); } catch(e) {}
+    } else {
+      try { this.rec.stop(); } catch(e) {}
+      hideVoiceInterim();
+    }
+    return this.active;
   }
 
   stop() {
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.active = false;
+    if (this.rec) try { this.rec.stop(); } catch(e) {}
   }
+
+  get available() { return !!this.rec; }
+}
+
+function hideVoiceInterim() {
+  document.getElementById('voice-status').classList.remove('visible');
+  const el = document.getElementById('voice-heard');
+  if (el) el.textContent = '';
 }
 
 // ── GPS ─────────────────────────────────────────────────────────────────────
-function getLocation() {
+function getGPS() {
   return new Promise(res => {
     if (!navigator.geolocation) return res(null);
     navigator.geolocation.getCurrentPosition(
       p => res({ lat: p.coords.latitude.toFixed(5), lng: p.coords.longitude.toFixed(5), acc: Math.round(p.coords.accuracy) }),
-      () => res(null),
-      { timeout: 8000 }
+      () => res(null), { timeout: 6000 }
     );
   });
 }
 
 // ── APP STATE ───────────────────────────────────────────────────────────────
-const state = {
-  screen: 'setup',       // setup | session | review
-  ledger: null,
-  audio: null,
-  camera: null,
-  activeCategory: 'vocal',
-  researchMode: false,
-  sessionStarted: false,
-  lastSignal: null,
-  flashTimeout: null,
-};
+let ledger = null;
+let audioEng = null;
+let cameraEng = null;
+let voiceEng = null;
+let timerInt = null;
+let activeCat = 'vocal';
+let researchMode = false;
 
-// ── RENDER ──────────────────────────────────────────────────────────────────
-function render() {
-  const app = document.getElementById('app');
-  if (state.screen === 'setup') app.innerHTML = renderSetup();
-  if (state.screen === 'session') app.innerHTML = renderSession();
-  if (state.screen === 'review') app.innerHTML = renderReview();
-  bindEvents();
-}
-
-function renderSetup() {
-  return `
-<div class="screen setup-screen">
-  <div class="setup-header">
-    <div class="logo-mark">
-      <svg viewBox="0 0 60 60" class="logo-svg">
-        <path d="M30 8 C18 8 10 18 10 30 C10 40 16 48 26 52 L26 48 C19 45 14 38 14 30 C14 20 21 12 30 12 C38 12 44 17 47 24 L30 24 L24 33 L36 33 L30 52 L50 28 L38 28 L44 16 C39 11 35 8 30 8Z" fill="var(--gold)"/>
-      </svg>
-    </div>
-    <h1 class="app-title">CORVID<span class="title-obs">OBS</span></h1>
-    <p class="app-sub">Field Observation Logger</p>
-  </div>
-
-  <div class="setup-form">
-    <div class="field-group">
-      <label class="field-label">Species</label>
-      <div class="species-selector">
-        <button class="species-btn active" data-species="raven">Common Raven</button>
-        <button class="species-btn" data-species="crow">American Crow</button>
-        <button class="species-btn" data-species="other">Other Corvid</button>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">Subjects visible</label>
-      <div class="count-selector">
-        <button class="count-btn" data-count="1">1</button>
-        <button class="count-btn" data-count="2">2</button>
-        <button class="count-btn" data-count="3">3</button>
-        <button class="count-btn" data-count="4+">4+</button>
-        <button class="count-btn" data-count="unknown">?</button>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">Estimated distance</label>
-      <div class="dist-selector">
-        <button class="dist-btn" data-dist="<5m">&lt;5m</button>
-        <button class="dist-btn" data-dist="5-15m">5–15m</button>
-        <button class="dist-btn" data-dist="15-30m">15–30m</button>
-        <button class="dist-btn" data-dist="30-100m">30–100m</button>
-        <button class="dist-btn" data-dist=">100m">&gt;100m</button>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">Interface mode</label>
-      <div class="mode-toggle">
-        <button class="mode-btn active" data-mode="field">Field Guide <span class="mode-hint">plain language</span></button>
-        <button class="mode-btn" data-mode="research">Research <span class="mode-hint">technical IDs</span></button>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">Notes (optional)</label>
-      <textarea class="notes-input" id="setup-notes" placeholder="Habitat, weather, behavior context..."></textarea>
-    </div>
-  </div>
-
-  <button class="begin-btn" id="begin-session">
-    <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
-    Begin Session
-  </button>
-</div>`;
-}
-
-function renderSession() {
-  const cats = Object.entries(SIGNALS);
-  const activeSigs = SIGNALS[state.activeCategory]?.signals || [];
-
-  return `
-<div class="screen session-screen">
-  <!-- Header bar -->
-  <div class="session-header">
-    <div class="session-meta">
-      <span class="session-species">${state.ledger.species.toUpperCase()}</span>
-      <span class="session-timer" id="session-timer">00:00</span>
-    </div>
-    <div class="session-controls">
-      <button class="ctrl-btn" id="toggle-mode" title="${state.researchMode ? 'Field Guide' : 'Research'} mode">
-        ${state.researchMode ? '👁' : '⚗'}
-      </button>
-      <button class="ctrl-btn end-btn" id="end-session">END</button>
-    </div>
-  </div>
-
-  <!-- Camera viewfinder -->
-  <div class="viewfinder-wrap">
-    <video id="camera-feed" autoplay muted playsinline class="camera-feed"></video>
-    <div class="vf-overlay">
-      <div class="vf-corner tl"></div>
-      <div class="vf-corner tr"></div>
-      <div class="vf-corner bl"></div>
-      <div class="vf-corner br"></div>
-    </div>
-    ${state.lastSignal ? `<div class="signal-flash" id="signal-flash">${state.lastSignal}</div>` : ''}
-  </div>
-
-  <!-- Audio waveform -->
-  <div class="audio-wrap">
-    <div class="audio-label">
-      <span class="rec-dot"></span>
-      <span>AUDIO</span>
-    </div>
-    <canvas id="waveform" class="waveform" width="600" height="48"></canvas>
-  </div>
-
-  <!-- Category tabs -->
-  <div class="cat-tabs" id="cat-tabs">
-    ${cats.map(([key, cat]) => `
-      <button class="cat-tab ${key === state.activeCategory ? 'active' : ''}" data-cat="${key}">
-        <span class="cat-icon">${CATEGORY_ICONS[cat.icon] || ''}</span>
-        <span class="cat-label">${cat.label}</span>
-      </button>
-    `).join('')}
-  </div>
-
-  <!-- Signal grid -->
-  <div class="signal-grid" id="signal-grid">
-    ${activeSigs.map(sig => `
-      <button class="signal-card" data-sig="${sig.id}" data-cat="${state.activeCategory}">
-        <div class="sig-plain">${sig.plain}</div>
-        ${state.researchMode ? `<div class="sig-tech">${sig.tech}</div>` : ''}
-        ${sig.caveat ? `<div class="sig-caveat-dot" title="${sig.caveat}">⚠</div>` : ''}
-      </button>
-    `).join('')}
-  </div>
-
-  <!-- Event log strip -->
-  <div class="event-strip" id="event-strip">
-    ${(state.ledger.events.slice(-6).reverse()).map(e => `
-      <div class="event-pill">
-        <span class="ev-time">${elapsed(e.ts, state.ledger.startedAt)}</span>
-        <span class="ev-plain">${e.plain}</span>
-        ${e.hasCaveat ? '<span class="ev-warn">⚠</span>' : ''}
-      </div>
-    `).join('')}
-  </div>
-</div>`;
-}
-
-function renderReview() {
-  const data = state.ledger.export();
-  const top = state.ledger.summary();
-  const duration = Math.round((Date.now() - state.ledger.startedAt) / 1000);
-  const mins = Math.floor(duration/60);
-  const secs = duration % 60;
-
-  return `
-<div class="screen review-screen">
-  <div class="review-header">
-    <div class="logo-mark small">
-      <svg viewBox="0 0 60 60" class="logo-svg">
-        <path d="M30 8 C18 8 10 18 10 30 C10 40 16 48 26 52 L26 48 C19 45 14 38 14 30 C14 20 21 12 30 12 C38 12 44 17 47 24 L30 24 L24 33 L36 33 L30 52 L50 28 L38 28 L44 16 C39 11 35 8 30 8Z" fill="var(--gold)"/>
-      </svg>
-    </div>
-    <h2 class="review-title">Session Complete</h2>
-    <p class="review-sub">${data.session_id}</p>
-  </div>
-
-  <div class="review-stats">
-    <div class="stat-block">
-      <div class="stat-num">${data.event_count}</div>
-      <div class="stat-label">signals logged</div>
-    </div>
-    <div class="stat-block">
-      <div class="stat-num">${mins}:${String(secs).padStart(2,'0')}</div>
-      <div class="stat-label">duration</div>
-    </div>
-    <div class="stat-block">
-      <div class="stat-num">${data.species}</div>
-      <div class="stat-label">species</div>
-    </div>
-  </div>
-
-  ${top.length ? `
-  <div class="review-section">
-    <h3 class="review-sec-title">Most observed</h3>
-    ${top.map(t => `
-      <div class="top-signal">
-        <span class="top-tech">${t.tech}</span>
-        <span class="top-count">×${t.n}</span>
-      </div>
-    `).join('')}
-  </div>` : ''}
-
-  ${data.context.gps ? `
-  <div class="review-section">
-    <h3 class="review-sec-title">Location</h3>
-    <p class="review-detail">${data.context.gps.lat}, ${data.context.gps.lng} (±${data.context.gps.acc}m)</p>
-  </div>` : ''}
-
-  <div class="review-section">
-    <h3 class="review-sec-title">Session log</h3>
-    <div class="event-log">
-      ${data.events.map(e => `
-        <div class="log-row ${e.hasCaveat ? 'has-caveat' : ''}">
-          <span class="log-time">${e.elapsed_s}s</span>
-          <span class="log-plain">${e.plain}</span>
-          <span class="log-tech">${e.tech}</span>
-        </div>
-      `).join('')}
-    </div>
-  </div>
-
-  <div class="review-actions">
-    <button class="export-btn" id="export-json">Export JSON</button>
-    <button class="new-btn" id="new-session">New Session</button>
-  </div>
-</div>`;
-}
-
-function elapsed(ts, start) {
-  const s = Math.round((ts - start) / 1000);
-  const m = Math.floor(s/60);
-  return `${m}:${String(s%60).padStart(2,'0')}`;
-}
-
-// ── EVENTS ──────────────────────────────────────────────────────────────────
-let timerInterval = null;
-
-function bindEvents() {
-  // Setup screen
-  document.querySelectorAll('.species-btn').forEach(btn => {
+// ── PILL SELECTORS ──────────────────────────────────────────────────────────
+function bindPills(groupId) {
+  document.querySelectorAll(`#${groupId} .pill`).forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.species-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll(`#${groupId} .pill`).forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
     });
   });
+}
 
-  document.querySelectorAll('.count-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
+function pillVal(groupId) {
+  return document.querySelector(`#${groupId} .pill.active`)?.dataset.v || null;
+}
 
-  document.querySelectorAll('.dist-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.dist-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
-
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.researchMode = btn.dataset.mode === 'research';
-    });
-  });
-
-  const beginBtn = document.getElementById('begin-session');
-  if (beginBtn) beginBtn.addEventListener('click', beginSession);
-
-  // Session screen
-  document.querySelectorAll('.cat-tab').forEach(tab => {
+// ── CATEGORY TABS ───────────────────────────────────────────────────────────
+function renderCatTabs() {
+  const el = document.getElementById('cat-tabs');
+  el.innerHTML = Object.entries(SIGNALS).map(([key, cat]) => `
+    <button class="cat-tab ${key===activeCat?'active':''}" data-cat="${key}">
+      <span style="font-family:monospace;font-size:11px;opacity:.7">${cat.icon}</span>
+      ${cat.label}
+    </button>
+  `).join('');
+  el.querySelectorAll('.cat-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      state.activeCategory = tab.dataset.cat;
-      render();
-      // Re-attach camera and audio to new DOM elements
-      attachMedia();
+      activeCat = tab.dataset.cat;
+      renderCatTabs();
+      renderSigGrid();
     });
-  });
-
-  document.querySelectorAll('.signal-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const sigId = card.dataset.sig;
-      const catKey = card.dataset.cat;
-      const sig = SIGNALS[catKey]?.signals.find(s => s.id === sigId);
-      if (!sig) return;
-      const entry = state.ledger.log(sigId, sig);
-      state.lastSignal = sig.plain;
-
-      // Flash feedback
-      card.classList.add('tapped');
-      setTimeout(() => card.classList.remove('tapped'), 400);
-
-      // Update event strip only
-      const strip = document.getElementById('event-strip');
-      if (strip) {
-        const pill = document.createElement('div');
-        pill.className = 'event-pill new';
-        pill.innerHTML = `<span class="ev-time">${elapsed(entry.ts, state.ledger.startedAt)}</span><span class="ev-plain">${sig.plain}</span>${sig.caveat ? '<span class="ev-warn">⚠</span>' : ''}`;
-        strip.insertBefore(pill, strip.firstChild);
-        if (strip.children.length > 6) strip.lastChild.remove();
-        setTimeout(() => pill.classList.remove('new'), 400);
-      }
-
-      // Show caveat if present
-      if (sig.caveat) showCaveat(sig.caveat);
-    });
-  });
-
-  const toggleMode = document.getElementById('toggle-mode');
-  if (toggleMode) toggleMode.addEventListener('click', () => {
-    state.researchMode = !state.researchMode;
-    render();
-    attachMedia();
-  });
-
-  const endBtn = document.getElementById('end-session');
-  if (endBtn) endBtn.addEventListener('click', endSession);
-
-  // Review screen
-  const exportBtn = document.getElementById('export-json');
-  if (exportBtn) exportBtn.addEventListener('click', exportSession);
-
-  const newBtn = document.getElementById('new-session');
-  if (newBtn) newBtn.addEventListener('click', () => {
-    state.screen = 'setup';
-    state.ledger = null;
-    state.lastSignal = null;
-    render();
   });
 }
 
+// ── SIGNAL GRID ─────────────────────────────────────────────────────────────
+function renderSigGrid() {
+  const sigs = SIGNALS[activeCat]?.signals || [];
+  const el = document.getElementById('sig-grid');
+  el.innerHTML = sigs.map(sig => `
+    <button class="sig-btn" data-id="${sig.id}" data-cat="${activeCat}">
+      <div class="sig-plain">${sig.plain}</div>
+      ${researchMode ? `<div class="sig-tech">${sig.tech}</div>` : ''}
+      ${sig.caveat ? `<span class="sig-warn">⚠</span>` : ''}
+    </button>
+  `).join('');
+
+  el.querySelectorAll('.sig-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sig = SIGNALS[btn.dataset.cat]?.signals.find(s=>s.id===btn.dataset.id);
+      if (sig) logSignal(sig, 'tap', btn);
+    });
+  });
+}
+
+// ── LOG SIGNAL ──────────────────────────────────────────────────────────────
+function logSignal(sig, source = 'tap', btnEl = null) {
+  const entry = ledger.log(sig, source);
+
+  // Tap flash on button
+  if (btnEl) {
+    btnEl.classList.add('tapped');
+    setTimeout(() => btnEl.classList.remove('tapped'), 350);
+  }
+
+  // Flash on viewfinder
+  flashSig(sig.plain);
+
+  // Event strip
+  addEventPill(entry);
+
+  // Caveat toast
+  if (sig.caveat) showCaveat(sig.caveat);
+}
+
+function flashSig(text) {
+  const el = document.getElementById('sig-flash');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+function addEventPill(entry) {
+  const strip = document.getElementById('event-strip');
+  const s = Math.round(entry.elapsed/1000);
+  const t = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const pill = document.createElement('div');
+  pill.className = 'ev-pill';
+  pill.innerHTML = `<span class="ev-t">${t}</span><span class="ev-p">${entry.plain}</span>${entry.hasCaveat?'<span class="ev-w">⚠</span>':''}`;
+  strip.insertBefore(pill, strip.firstChild);
+  while (strip.children.length > 5) strip.lastChild.remove();
+}
+
+// ── CAVEAT TOAST ─────────────────────────────────────────────────────────────
+let caveatTimer = null;
 function showCaveat(text) {
-  let existing = document.getElementById('caveat-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'caveat-toast';
-  toast.className = 'caveat-toast';
-  toast.innerHTML = `<span class="caveat-warn">⚠</span> ${text}`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.classList.add('visible'), 10);
-  setTimeout(() => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 400); }, 4000);
+  const el = document.getElementById('caveat');
+  el.innerHTML = `<span class="caveat-icon">⚠</span>${text}`;
+  el.classList.add('show');
+  clearTimeout(caveatTimer);
+  caveatTimer = setTimeout(() => el.classList.remove('show'), 4500);
 }
 
-async function beginSession() {
-  const species = document.querySelector('.species-btn.active')?.dataset.species || 'raven';
-  const count = document.querySelector('.count-btn.active')?.dataset.count || 'unknown';
-  const dist = document.querySelector('.dist-btn.active')?.dataset.dist || 'unknown';
-  const notes = document.getElementById('setup-notes')?.value || '';
-
-  state.ledger = new SessionLedger();
-  state.ledger.species = species;
-
-  const gps = await getLocation();
-  state.ledger.setContext({ subjects: count, distance: dist, notes, gps });
-
-  state.screen = 'session';
-  render();
-  attachMedia();
-  startTimer();
-}
-
-function attachMedia() {
-  // Camera
-  const videoEl = document.getElementById('camera-feed');
-  if (videoEl) {
-    if (!state.camera) {
-      state.camera = new CameraEngine(videoEl);
-      state.camera.start();
-    } else {
-      videoEl.srcObject = state.camera.stream;
-      videoEl.play().catch(() => {});
-    }
-  }
-
-  // Audio
-  const waveEl = document.getElementById('waveform');
-  if (waveEl) {
-    if (!state.audio) {
-      state.audio = new AudioEngine(waveEl);
-      state.audio.start();
-    } else {
-      state.audio.canvas = waveEl;
-    }
-  }
-}
-
+// ── TIMER ────────────────────────────────────────────────────────────────────
 function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    const el = document.getElementById('session-timer');
-    if (!el || !state.ledger) return;
-    const s = Math.round((Date.now() - state.ledger.startedAt) / 1000);
-    el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  clearInterval(timerInt);
+  timerInt = setInterval(() => {
+    if (!ledger) return;
+    const s = Math.round((Date.now()-ledger.startedAt)/1000);
+    const el = document.getElementById('hud-timer');
+    if (el) el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   }, 1000);
 }
 
-function endSession() {
-  clearInterval(timerInterval);
-  if (state.camera) { state.camera.stop(); state.camera = null; }
-  if (state.audio) { state.audio.stop(); state.audio = null; }
-  state.screen = 'review';
-  render();
+// ── SCREENS ──────────────────────────────────────────────────────────────────
+function show(id) {
+  ['setup','session','review'].forEach(s => {
+    document.getElementById(s).classList.toggle('hidden', s !== id);
+  });
 }
 
-function exportSession() {
-  const data = state.ledger.export();
+// ── BEGIN SESSION ────────────────────────────────────────────────────────────
+async function beginSession() {
+  ledger = new Ledger();
+  ledger.species = pillVal('species-pills') || 'raven';
+  ledger.setCtx({
+    subjects: pillVal('count-pills') || 'unknown',
+    distance: pillVal('dist-pills') || 'unknown',
+    notes: document.getElementById('setup-notes').value.trim(),
+    mode: pillVal('mode-pills') || 'field'
+  });
+  researchMode = pillVal('mode-pills') === 'research';
+
+  // GPS (non-blocking)
+  getGPS().then(gps => { if (gps) ledger.setCtx({ gps }); });
+
+  // Camera
+  cameraEng = new CameraEngine(document.getElementById('camera'));
+  await cameraEng.start();
+
+  // Audio
+  audioEng = new AudioEngine();
+  const audioOk = await audioEng.start();
+
+  show('session');
+
+  // Waveform
+  if (audioOk) {
+    const canvas = document.getElementById('waveform');
+    // size canvas to actual display size
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    audioEng.drawLoop(canvas);
+  }
+
+  // HUD
+  document.getElementById('hud-species').textContent =
+    ledger.species.charAt(0).toUpperCase() + ledger.species.slice(1);
+  startTimer();
+
+  // Voice engine
+  voiceEng = new VoiceEngine((sig, heard) => {
+    logSignal(sig, 'voice');
+    const el = document.getElementById('voice-heard');
+    if (el) el.textContent = '✓ ' + sig.plain;
+    setTimeout(hideVoiceInterim, 1200);
+  });
+
+  // UI
+  renderCatTabs();
+  renderSigGrid();
+
+  // Voice toggle
+  document.getElementById('voice-toggle').addEventListener('click', () => {
+    if (!voiceEng.available) { showCaveat('Speech recognition not available in this browser'); return; }
+    const active = voiceEng.toggle();
+    document.getElementById('voice-toggle').classList.toggle('active', active);
+    if (!active) hideVoiceInterim();
+  });
+
+  document.getElementById('mode-toggle').addEventListener('click', () => {
+    researchMode = !researchMode;
+    document.getElementById('mode-toggle').textContent = researchMode ? '👁' : '⚗';
+    renderSigGrid();
+  });
+
+  document.getElementById('end-btn').addEventListener('click', endSession);
+}
+
+// ── END SESSION ──────────────────────────────────────────────────────────────
+function endSession() {
+  clearInterval(timerInt);
+  if (voiceEng) voiceEng.stop();
+  if (audioEng) audioEng.stop();
+  if (cameraEng) cameraEng.stop();
+
+  // Render review
+  const data = ledger.export();
+  const dur = Math.round((Date.now()-ledger.startedAt)/1000);
+  document.getElementById('review-id').textContent = data.session_id;
+  document.getElementById('rv-count').textContent = data.event_count;
+  document.getElementById('rv-dur').textContent = `${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}`;
+  document.getElementById('rv-species').textContent = ledger.species;
+
+  // Top signals
+  const top = ledger.summary();
+  document.getElementById('rv-top').innerHTML = top.length
+    ? top.map(({t,n}) => `<div class="top-row"><span>${t}</span><span>×${n}</span></div>`).join('')
+    : '<div style="color:var(--text-dim);font-size:11px">No signals logged</div>';
+
+  // Log
+  document.getElementById('rv-log').innerHTML = data.events.length
+    ? data.events.map(e => `
+        <div class="log-row">
+          <span class="log-t">${e.elapsed_s}s</span>
+          <span class="log-p">${e.plain}</span>
+          <span class="log-k">${e.tech}</span>
+        </div>`).join('')
+    : '<div style="padding:12px;color:var(--text-dim);font-size:11px">No events</div>';
+
+  show('review');
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+function exportJSON() {
+  const data = ledger.export();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `${data.session_id}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = `${data.session_id}.json`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
-// ── BOOT ────────────────────────────────────────────────────────────────────
-render();
+// ── BIND SETUP ───────────────────────────────────────────────────────────────
+bindPills('species-pills');
+bindPills('count-pills');
+bindPills('dist-pills');
+bindPills('mode-pills');
+
+document.getElementById('begin-btn').addEventListener('click', beginSession);
+document.getElementById('export-btn').addEventListener('click', exportJSON);
+document.getElementById('new-btn').addEventListener('click', () => {
+  ledger = null;
+  show('setup');
+});
